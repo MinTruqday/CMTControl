@@ -14,6 +14,7 @@ const schema = z.object({
   GOOGLE_SPREADSHEET_ID: optionalText,
   GOOGLE_SERVICE_ACCOUNT_FILE: optionalText,
   GOOGLE_APPS_SCRIPT_URL: optionalUrl,
+  GOOGLE_APPS_SCRIPT_SECRET: optionalText,
   MONGODB_URL: optionalUrl,
   REPORT_OUTPUT_DIR: z.string().default('reports/current'),
   EVIDENCE_OUTPUT_DIR: z.string().default('evidence'),

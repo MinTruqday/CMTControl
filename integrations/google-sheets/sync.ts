@@ -118,6 +118,19 @@ async function ensureIssueSheet(bug: LocalBug, issueNo: number): Promise<void> {
   await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: [{ repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 2 }, cell: { userEnteredFormat: { backgroundColor: { red: 0.06, green: 0.64, blue: 0.5 }, textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } }] } });
 }
 
+async function embedEvidence(bug: LocalBug, issueNo: number): Promise<void> {
+  if (!config.GOOGLE_APPS_SCRIPT_URL || !config.GOOGLE_APPS_SCRIPT_SECRET) return;
+  const sheetName = `Issue_no.${String(issueNo).padStart(2, '0')}`;
+  const images = bug.evidence.filter(file => existsSync(file) && /\.(png|jpe?g|webp)$/i.test(file)).slice(0, 4);
+  for (let index = 0; index < images.length; index += 1) {
+    const file = images[index];
+    const response = await fetch(config.GOOGLE_APPS_SCRIPT_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ secret: config.GOOGLE_APPS_SCRIPT_SECRET, spreadsheetId: config.GOOGLE_SPREADSHEET_ID, sheetName, imageBase64: readFileSync(file).toString('base64'), mimeType: file.endsWith('.png') ? 'image/png' : 'image/jpeg', fileName: file.split('/').at(-1), row: 12 + index * 32, column: 1, width: 900, height: 540 }) });
+    if (!response.ok) throw new Error(`APPS_SCRIPT_HTTP_${response.status}`);
+    const result = await response.json() as { ok?: boolean; error?: string };
+    if (!result.ok) throw new Error(result.error ?? 'APPS_SCRIPT_EMBED_FAILED');
+  }
+}
+
 export function queueSheetSync(bug: LocalBug): SyncAudit {
   const state = config.SHEET_SYNC_ENABLED ? 'PENDING_CREDENTIALS' : 'PENDING_CONFIGURATION';
   const reason = config.SHEET_SYNC_ENABLED
@@ -138,11 +151,13 @@ export async function syncPendingBugs(): Promise<SyncAudit[]> {
       const issueNo = await appendBug(bug);
       bug.sheetIssueNo = issueNo;
       await ensureIssueSheet(bug, issueNo);
+      await embedEvidence(bug, issueNo);
       continue;
     }
     try {
       const issueNo = await appendBug(bug);
       await ensureIssueSheet(bug, issueNo);
+      await embedEvidence(bug, issueNo);
       bug.syncStatus = 'COMPLETE';
       bug.sheetIssueNo = issueNo;
       audits.push(appendAudit({ bugId: bug.id, timestamp: new Date().toISOString(), state: 'COMPLETE', reason: `Appended or resolved Issue_no.${issueNo}.` }));
