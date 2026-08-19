@@ -95,11 +95,13 @@ async function ensureIssueSheet(bug: LocalBug, issueNo: number): Promise<void> {
   const workbook = await sheets.spreadsheets.get({ spreadsheetId, includeGridData: false });
   const existing = workbook.data.sheets?.find(sheet => sheet.properties?.title === title);
   let sheetId = existing?.properties?.sheetId;
+  const isNew = sheetId === undefined || sheetId === null;
   if (sheetId === undefined || sheetId === null) {
     const created = await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: [{ addSheet: { properties: { title } } }] } });
     sheetId = created.data.replies?.[0]?.addSheet?.properties?.sheetId;
   }
   if (sheetId === undefined || sheetId === null) throw new Error(`ISSUE_SHEET_CREATE_FAILED_${issueNo}`);
+  if (!isNew) return;
   const detail = [
     ['QA Issue evidence'],
     ['Issue number', `#${issueNo}`],
@@ -133,7 +135,9 @@ export async function syncPendingBugs(): Promise<SyncAudit[]> {
   const audits: SyncAudit[] = [];
   for (const bug of bugs) {
     if (bug.syncStatus === 'COMPLETE') {
-      if (bug.sheetIssueNo) await ensureIssueSheet(bug, bug.sheetIssueNo);
+      const issueNo = await appendBug(bug);
+      bug.sheetIssueNo = issueNo;
+      await ensureIssueSheet(bug, issueNo);
       continue;
     }
     try {
