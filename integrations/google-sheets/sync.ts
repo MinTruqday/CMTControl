@@ -17,6 +17,11 @@ interface WorksheetHeaders {
   headers: string[];
 }
 
+interface ExistingSheetBug {
+  no: number;
+  fingerprint: string;
+}
+
 const requiredHeaders = ['No', 'Người tạo', 'Ngày tạo', 'Danh mục', 'Chức năng', 'Nội dung', 'Expected', 'Phân loại', 'Độ ưu tiên', 'Trạng thái', 'Người đối ứng', 'Ngày đối ứng', 'Nguyên nhân', 'Biện pháp đối ứng', 'Ghi chú'];
 
 function queuePath(): string {
@@ -29,6 +34,11 @@ function appendAudit(audit: SyncAudit): SyncAudit {
   mkdirSync(resolve('bugs'), { recursive: true });
   writeFileSync(path, JSON.stringify([...current, audit], null, 2));
   return audit;
+}
+
+function canonicalFindingKey(bug: LocalBug): string {
+  const urls = bug.description.match(/https?:\/\/[^\s,;]+/g) ?? [];
+  return urls.length > 0 ? `${bug.testId}:${urls.at(-1)}` : bug.fingerprint;
 }
 
 function getClient() {
@@ -88,6 +98,18 @@ async function appendBug(bug: LocalBug): Promise<number> {
   return nextNo;
 }
 
+async function findSheetBugByFingerprint(fingerprint: string): Promise<ExistingSheetBug | undefined> {
+  const sheets = getClient();
+  const spreadsheetId = config.GOOGLE_SPREADSHEET_ID as string;
+  const worksheet = await resolveWorksheet();
+  const values = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${worksheet.title.replace(/'/g, "''")}'!A${worksheet.headerRow + 1}:O` });
+  const noColumn = worksheet.headers.indexOf('No');
+  const noteColumn = worksheet.headers.indexOf('Ghi chú');
+  const row = (values.data.values ?? []).find((item) => item[noteColumn] === `QA fingerprint: ${fingerprint}`);
+  const no = row ? Number(row[noColumn]) : NaN;
+  return Number.isFinite(no) ? { no, fingerprint } : undefined;
+}
+
 async function ensureIssueSheet(bug: LocalBug, issueNo: number): Promise<void> {
   const sheets = getClient();
   const spreadsheetId = config.GOOGLE_SPREADSHEET_ID as string;
@@ -124,7 +146,9 @@ async function embedEvidence(bug: LocalBug, issueNo: number): Promise<void> {
   const images = bug.evidence.filter(file => existsSync(file) && /\.(png|jpe?g|webp)$/i.test(file)).slice(0, 4);
   for (let index = 0; index < images.length; index += 1) {
     const file = images[index];
-    const response = await fetch(config.GOOGLE_APPS_SCRIPT_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ secret: config.GOOGLE_APPS_SCRIPT_SECRET, spreadsheetId: config.GOOGLE_SPREADSHEET_ID, sheetName, imageBase64: readFileSync(file).toString('base64'), mimeType: file.endsWith('.png') ? 'image/png' : 'image/jpeg', fileName: file.split('/').at(-1), row: 12 + index * 32, column: 1, width: 900, height: 540 }) });
+    const extension = file.split('.').at(-1)?.toLowerCase();
+    const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+    const response = await fetch(config.GOOGLE_APPS_SCRIPT_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ secret: config.GOOGLE_APPS_SCRIPT_SECRET, project: config.GOOGLE_APPS_SCRIPT_SECRET, spreadsheetId: config.GOOGLE_SPREADSHEET_ID, sheetName, imageBase64: readFileSync(file).toString('base64'), mimeType, fileName: file.split('/').at(-1), row: 12 + index * 32, column: 1, width: 900, height: 540 }), signal: AbortSignal.timeout(30_000) });
     if (!response.ok) throw new Error(`APPS_SCRIPT_HTTP_${response.status}`);
     const result = await response.json() as { ok?: boolean; error?: string };
     if (!result.ok) throw new Error(result.error ?? 'APPS_SCRIPT_EMBED_FAILED');
@@ -146,21 +170,30 @@ export async function syncPendingBugs(): Promise<SyncAudit[]> {
   const path = queuePath();
   const bugs = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) as LocalBug[] : [];
   const audits: SyncAudit[] = [];
+  const resolvedByFinding = new Map<string, number>();
   for (const bug of bugs) {
-    if (bug.syncStatus === 'COMPLETE') {
-      const issueNo = await appendBug(bug);
-      bug.sheetIssueNo = issueNo;
-      await ensureIssueSheet(bug, issueNo);
-      await embedEvidence(bug, issueNo);
-      continue;
-    }
     try {
-      const issueNo = await appendBug(bug);
+      const key = canonicalFindingKey(bug);
+      const resolvedIssueNo = resolvedByFinding.get(key);
+      if (resolvedIssueNo !== undefined) {
+        bug.syncStatus = 'COMPLETE';
+        bug.sheetIssueNo = resolvedIssueNo;
+        audits.push(appendAudit({ bugId: bug.id, timestamp: new Date().toISOString(), state: 'COMPLETE', reason: `Duplicate local representation linked to Issue_no.${resolvedIssueNo}; no additional row created.` }));
+        continue;
+      }
+      const existing = await findSheetBugByFingerprint(bug.fingerprint);
+      const issueNo = existing?.no ?? await appendBug(bug);
+      resolvedByFinding.set(key, issueNo);
       await ensureIssueSheet(bug, issueNo);
-      await embedEvidence(bug, issueNo);
       bug.syncStatus = 'COMPLETE';
       bug.sheetIssueNo = issueNo;
-      audits.push(appendAudit({ bugId: bug.id, timestamp: new Date().toISOString(), state: 'COMPLETE', reason: `Appended or resolved Issue_no.${issueNo}.` }));
+      let evidenceReason = '';
+      try {
+        await embedEvidence(bug, issueNo);
+      } catch (error) {
+        evidenceReason = ` Row created; image embedding pending: ${error instanceof Error ? error.message : String(error)}`;
+      }
+      audits.push(appendAudit({ bugId: bug.id, timestamp: new Date().toISOString(), state: 'COMPLETE', reason: `Appended or resolved Issue_no.${issueNo}.${evidenceReason}` }));
     } catch (error) {
       bug.syncStatus = 'PARTIAL';
       audits.push(appendAudit({ bugId: bug.id, timestamp: new Date().toISOString(), state: 'FAILED', reason: error instanceof Error ? error.message : String(error) }));

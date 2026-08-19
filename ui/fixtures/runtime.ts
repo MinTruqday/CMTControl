@@ -16,7 +16,7 @@ export const test = base.extend<{ appUrl: string }>({
     await use(page);
     if (testInfo.status !== testInfo.expectedStatus) {
       const testId = testInfo.title.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-|-$/g, '');
-      const directory = resolve(config.EVIDENCE_OUTPUT_DIR, process.env.QA_RUN_ID ?? 'manual', testId);
+      const directory = resolve(config.EVIDENCE_OUTPUT_DIR, process.env.QA_RUN_ID ?? 'manual', testInfo.project.name, testId);
       mkdirSync(directory, { recursive: true });
       try {
         writeFileSync(resolve(directory, 'console.json'), JSON.stringify(consoleEvents, null, 2));
@@ -24,7 +24,7 @@ export const test = base.extend<{ appUrl: string }>({
         writeFileSync(resolve(directory, 'dom.html'), await page.content());
         writeFileSync(resolve(directory, 'result.json'), JSON.stringify({ id: testInfo.title, status: testInfo.status, expectedStatus: testInfo.expectedStatus, errors: testInfo.errors.map((error) => error.message) }, null, 2));
         const screenshot = resolve(directory, 'screenshot.png');
-        await page.screenshot({ path: screenshot, fullPage: true });
+        await page.screenshot({ path: screenshot, fullPage: false });
         await annotateScreenshot(screenshot, resolve(directory, 'annotated.png'), [{ x: 0, y: 0, width: Math.min(600, page.viewportSize()?.width ?? 600), height: 48, label: `FAIL: ${testInfo.title}` }]);
         if (testInfo.title.includes('E2E-CONTACT')) {
           const form = page.locator('form').filter({ has: page.locator('[name="full_name"]') }).first();

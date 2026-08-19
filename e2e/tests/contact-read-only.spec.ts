@@ -13,6 +13,8 @@ test('E2E-CONTACT-002 @edge', async ({ page, appUrl }) => {
   await page.goto(`${appUrl}/vi/contact`, { waitUntil: 'domcontentloaded' });
   const form = page.locator('form').filter({ has: page.locator('[name="full_name"]') }).first();
   const email = form.locator('[name="email"]');
+  await form.scrollIntoViewIfNeeded();
+  await expect(form).toBeInViewport();
   await form.locator('[name="full_name"]').fill('QA Runtime Validation');
   await email.fill('not-an-email');
   await form.locator('[name="phone"]').fill('0900000000');

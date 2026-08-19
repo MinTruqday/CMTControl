@@ -86,11 +86,19 @@ export async function discoverSite(): Promise<SiteDiscovery> {
         const rect = image.getBoundingClientRect();
         return { url: image.currentSrc || image.src, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
       }).filter((image) => urls.includes(image.url) && image.width > 0 && image.height > 0), failedUrls);
-      const annotations = boxes.length > 0
-        ? boxes.map((box) => ({ x: Math.max(0, Math.round(box.x)), y: Math.max(0, Math.round(box.y)), width: Math.round(box.width), height: Math.round(box.height), label: `Failed image asset: HTTP ${pageFailures.find((failure) => failure.url === box.url)?.status ?? 0}` }))
+      if (boxes.length > 0) {
+        await page.evaluate(({ y, height }) => window.scrollTo({ top: Math.max(0, window.scrollY + y - Math.max(80, (window.innerHeight - height) / 2)), behavior: 'instant' }), boxes[0]);
+      }
+      const viewportBoxes = await page.locator('img').evaluateAll((elements, urls) => elements.map((element) => {
+        const image = element as HTMLImageElement;
+        const rect = image.getBoundingClientRect();
+        return { url: image.currentSrc || image.src, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      }).filter((image) => urls.includes(image.url) && image.width > 0 && image.height > 0), failedUrls);
+      const annotations = viewportBoxes.length > 0
+        ? viewportBoxes.map((box) => ({ x: Math.max(0, Math.round(box.x)), y: Math.max(0, Math.round(box.y)), width: Math.round(box.width), height: Math.round(box.height), label: `Failed image asset: HTTP ${pageFailures.find((failure) => failure.url === box.url)?.status ?? 0}` }))
         : [{ x: 0, y: 0, width: Math.min(700, page.viewportSize()?.width ?? 700), height: 48, label: `Failed image asset: HTTP ${pageFailures[0].status}` }];
       mkdirSync(evidenceDirectory, { recursive: true });
-      await page.screenshot({ path: screenshot, fullPage: true });
+      await page.screenshot({ path: screenshot, fullPage: false });
       await annotateScreenshot(screenshot, annotatedScreenshot, annotations);
       for (const failure of pageFailures) {
         failure.screenshot = screenshot;
