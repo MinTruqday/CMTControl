@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "qa:api": "tsx engine/api/live.ts",
-    "qa:api:live": "tsx engine/api/live.ts",
+    "qa:api": "newman run api/postman/QA_Automation.postman_collection.json --env-var baseUrl=${BASE_URL:-https://dev.aaainnovations.vn} --reporters cli,json --reporter-json-export reports/current/postman-results.json",
+    "qa:api:live": "newman run api/postman/QA_Automation.postman_collection.json --env-var baseUrl=${BASE_URL:-https://dev.aaainnovations.vn} --reporters cli,json --reporter-json-export reports/current/postman-results.json",
+    "qa:api:direct": "tsx engine/api/live.ts",
     "qa:ui": "playwright test ui/tests",
     "qa:e2e": "playwright test e2e/tests",
     "qa:visual": "playwright test visual/tests",
@@ -45,6 +46,7 @@
   "devDependencies": {
     "@playwright/test": "^1.54.1",
     "@types/node": "^22.15.32",
+    "newman": "^6.2.2",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
