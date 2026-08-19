@@ -31,10 +31,14 @@ export const test = base.extend<{ appUrl: string }>({
           : undefined;
         const contactEmail = contactForm?.locator('[name="email"]');
         if (contactEmail) {
+          const evidenceViewport = testInfo.project.name.includes('mobile')
+            ? { width: 1080, height: 1920 }
+            : { width: 1920, height: 1080 };
+          await page.setViewportSize(evidenceViewport);
           await contactEmail.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
           await expect(contactEmail).toBeInViewport();
         }
-        await page.screenshot({ path: screenshot, fullPage: false });
+        await page.screenshot({ path: screenshot, fullPage: false, scale: 'css' });
         await annotateScreenshot(screenshot, resolve(directory, 'annotated.png'), [{ x: 0, y: 0, width: Math.min(600, page.viewportSize()?.width ?? 600), height: 48, label: `FAIL: ${testInfo.title}` }]);
         if (testInfo.title.includes('E2E-CONTACT')) {
           const form = contactForm as NonNullable<typeof contactForm>;
@@ -49,13 +53,16 @@ export const test = base.extend<{ appUrl: string }>({
             // viewport-relative. Do not add document scroll offsets here.
             const imageWidth = metadata.width ?? 1;
             const imageHeight = metadata.height ?? 1;
-            const left = Math.min(imageWidth - 1, Math.max(0, Math.floor(emailBox.x - 20)));
-            const top = Math.min(imageHeight - 1, Math.max(0, Math.floor(emailBox.y - 40)));
-            const width = Math.max(1, Math.min(imageWidth - left, Math.ceil(emailBox.width) + 40));
-            const height = Math.max(1, Math.min(imageHeight - top, Math.ceil(emailBox.height) + 80));
+            // A single-field crop is too small to review. Keep contextual form
+            // evidence around the invalid field without reverting to a full page.
+            const width = Math.min(imageWidth, 700);
+            const height = Math.min(imageHeight, 560);
+            const emailCenterY = emailBox.y + emailBox.height / 2;
+            const left = Math.min(imageWidth - width, Math.max(0, Math.floor(emailBox.x - 32)));
+            const top = Math.max(0, Math.min(imageHeight - height, Math.round(emailCenterY - height / 2)));
             await image.extract({ left, top, width, height }).png().toFile(focus);
             await annotateScreenshot(focus, resolve(directory, 'focus.annotated.png'), [{ x: Math.round(emailBox.x - left), y: Math.round(emailBox.y - top), width: Math.round(emailBox.width), height: Math.round(emailBox.height), label: 'Invalid email validation is bypassed' }]);
-            writeFileSync(resolve(directory, 'focus.json'), JSON.stringify({ target: '[name=email]', reason: 'The contact form opts out of browser validation and attempts submit after invalid input.', screenshot: focus, sourceScreenshot: screenshot }, null, 2));
+            writeFileSync(resolve(directory, 'focus.json'), JSON.stringify({ target: '[name=email]', reason: 'The contact form opts out of browser validation and attempts submit after invalid input.', crop: { width, height, contextual: true }, screenshot: focus, sourceScreenshot: screenshot }, null, 2));
           }
         }
       } catch (error) {
