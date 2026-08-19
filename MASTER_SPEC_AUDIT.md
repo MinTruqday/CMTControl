@@ -24,4 +24,17 @@ Audit date: 19/08/2026
 | Run history and report | Dashboard reads historical run metadata; HTML report is available | Implemented |
 | Source inspection and automated remediation | No application source or deployment access is available in this workspace | Out of scope until source access is provided |
 
-The remaining major implementation work is the reviewed, opt-in Google Sheets evidence workflow and optional Ollama-assisted analysis. Neither should write to the user workbook automatically.
+## Master-spec gap register (implementation order)
+
+| MD requirement | Current status | Required proof of completion |
+|---|---|---|
+| 9.1–9.6 Postman/Newman runtime API tests | In progress | Collection, environment, Docker invocation and normalized JSON report; live run passes. |
+| 30–31 Requirement mapping and scenario model | Missing | Requirement-to-test matrix, scenario schema and executable validation. |
+| 33–34 AI code generation and validation pipeline | Missing | Opt-in generation, isolated validation and no-source-write guard. |
+| 40–42 Performance, accessibility, browser matrix | Missing | Executable suites and artifacts for each supported browser/device. |
+| 58–65 full workbook compatibility and concurrency | Partial | Master-row link, conflict journal, compare-before-write and idempotent sync verification. |
+| 64 direct issue-sheet image embedding | Blocked externally | Deployed Apps Script URL plus a successful inserted image in an Issue_no.xx tab. |
+| 66–68 runtime, isolation and edge-case taxonomy | Partial | Normalized runtime result model, cleanup record, and dedicated edge-case suites. |
+| 69+ remaining governance/security/release requirements | Not audited yet | Requirement-by-requirement evidence in this register. |
+
+No feature is marked complete solely because a file exists; the required proof column must be produced by a real run.
