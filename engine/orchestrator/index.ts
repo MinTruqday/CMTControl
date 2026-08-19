@@ -21,6 +21,8 @@ function main(): void {
   if (config.SOURCE_WRITE_ENABLED) throw new Error('SOURCE_WRITE_ENABLED must remain false in version 1');
   requireBaseUrl();
   mkdirSync(reportDir, { recursive: true });
+  const duplicateStatus = execute('duplicate-gate', 'npm', ['run', 'qa:duplicate-gate']);
+  if (duplicateStatus !== 0) { process.exitCode = duplicateStatus; return; }
   const groups = (mode === 'all' ? ['environment', 'api', 'ui', 'e2e', 'visual', 'discovery'] : [mode]).filter((group) => group !== 'visual' || config.VISUAL_TEST_ENABLED);
   const statuses = groups.map((group) => {
     if (group === 'environment') return execute(group, 'npm', ['run', 'qa:check-env']);
