@@ -1,7 +1,8 @@
-/** Deploy as a Web App. Set SCRIPT_SECRET to the same value as GOOGLE_APPS_SCRIPT_SECRET. */
+/** Deploy as a Web App. Set property project or SCRIPT_SECRET to GOOGLE_APPS_SCRIPT_SECRET. */
 function doPost(event) {
   const body = JSON.parse(event.postData.contents);
-  if (body.secret !== PropertiesService.getScriptProperties().getProperty('SCRIPT_SECRET')) {
+  const properties = PropertiesService.getScriptProperties();
+  if (body.secret !== (properties.getProperty('project') || properties.getProperty('SCRIPT_SECRET'))) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'UNAUTHORIZED' })).setMimeType(ContentService.MimeType.JSON);
   }
   const spreadsheet = SpreadsheetApp.openById(body.spreadsheetId);
