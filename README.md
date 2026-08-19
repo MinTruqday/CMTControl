@@ -28,6 +28,16 @@ npm run qa:report
 
 `qa:discover-site` crawls localized public routes, records failed first-party assets, and writes `reports/current/site-discovery.json`. `qa:triage` turns deterministic failed image responses into deduplicated local findings in `bugs/runtime-findings.json`; it does not modify the target application or a spreadsheet.
 
+## AI-written test plans
+
+The executable Playwright suite remains deterministic so that a run result is reproducible. To have the local model write a human-style test case from the current website instead of a hard-coded checklist, run:
+
+```bash
+npm run qa:ai:test-plan
+```
+
+It crawls the current target, samples real pages/forms and confirmed findings, then writes a review-required draft to `reports/current/ai-test-plan.json`. The AI is instructed to write a user journey rather than a generic “Kiểm tra…” title; the output is schema-validated and title-reviewed by the local model before it is saved. It does not execute mutations or create a Google Sheet issue.
+
 To enable append-only Google Sheet synchronization, set `SHEET_SYNC_ENABLED=true`, configure `GOOGLE_SPREADSHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_FILE`, and `TESTER_NAME`, share the workbook with the service-account email, then run:
 
 ```bash
