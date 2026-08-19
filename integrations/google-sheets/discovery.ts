@@ -12,6 +12,7 @@ export interface WorkbookProfile {
   missingRequiredHeaders: string[];
   unclassifiedIssueNumbers: number[];
   issuesWithoutStatus: number[];
+  latestIssues: Array<{ no: number; createdBy: string; createdDate: string; feature: string; description: string; priority: string; status: string }>;
   source: 'google-export';
 }
 
@@ -72,6 +73,7 @@ export async function discoverWorkbook(spreadsheetId = config.GOOGLE_SPREADSHEET
     missingRequiredHeaders: requiredHeaders.filter((header) => !headers.includes(header)),
     unclassifiedIssueNumbers: records.filter((row) => !(row[indexOf('Phân loại')] ?? '')).map((row) => Number(row[0])),
     issuesWithoutStatus: records.filter((row) => !(row[indexOf('Trạng thái')] ?? '')).map((row) => Number(row[0])),
+    latestIssues: records.slice(-8).reverse().map((row) => ({ no: Number(row[0]), createdBy: row[indexOf('Người tạo')] ?? '', createdDate: row[indexOf('Ngày tạo')] ?? '', feature: row[indexOf('Chức năng')] ?? '', description: row[indexOf('Nội dung')] ?? '', priority: row[indexOf('Độ ưu tiên')] ?? '', status: row[indexOf('Trạng thái')] ?? '' })),
     source: 'google-export'
   };
   mkdirSync(resolve('reports/current'), { recursive: true });

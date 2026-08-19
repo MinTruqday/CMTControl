@@ -39,8 +39,11 @@ The writer identifies the compatible master tab by headers, appends only a new b
 ## Docker
 
 ```bash
+docker compose up -d mongodb
 docker compose run --rm qa-runner npm run qa:all
 ```
+
+MongoDB runs only on `127.0.0.1:27017` and keeps dashboard run records plus read-only Sheet snapshots. Set `MONGODB_URL=mongodb://127.0.0.1:27017/qa_control` for the local dashboard. The QA container reaches Ollama through `host.docker.internal` and mounts the local service-account directory read-only.
 
 ## Artifacts
 

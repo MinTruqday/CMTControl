@@ -1,13 +1,40 @@
 services:
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: qa_control
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "127.0.0.1:27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   qa-runner:
     build: .
     env_file:
       - .env
     extra_hosts:
       - host.docker.internal:host-gateway
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      GOOGLE_SERVICE_ACCOUNT_FILE: /run/secrets/google-service-account.json
+      EVIDENCE_OUTPUT_DIR: /app/evidence
+      EVIDENCE_STORAGE_URL: /app/evidence
+      MONGODB_URL: mongodb://mongodb:27017/qa_control
+    depends_on:
+      mongodb:
+        condition: service_healthy
     volumes:
       - ./reports:/app/reports
       - ./evidence:/app/evidence
       - ./visual:/app/visual
       - ./storage:/app/storage
-      - ${GOOGLE_SERVICE_ACCOUNT_FILE:-/dev/null}:/run/secrets/google-service-account.json:ro
+      - ./secret:/run/secrets:ro
+
+volumes:
+  mongodb_data:

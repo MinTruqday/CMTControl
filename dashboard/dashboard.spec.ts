@@ -10,11 +10,13 @@ test('DASHBOARD-CONTROL-001 @smoke', async ({ page }, testInfo) => {
   await expect(page.getByRole('button', { name: 'Chụp màn hình' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Kiểm tra AI local' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Phát hiện cần review' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dữ liệu Google Sheet' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Bằng chứng' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Xuất báo cáo' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Tải JSON' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Tải CSV' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Tải PDF' })).toBeVisible();
   await expect(page.locator('#clock')).toContainText('GMT+7');
+  await expect(page.getByText('Copyright by Cao Minh Trung')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('dashboard.png'), fullPage: true });
 });
