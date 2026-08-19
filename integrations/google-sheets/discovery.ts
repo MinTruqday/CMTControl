@@ -1,6 +1,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config } from '../../config/qa.config.js';
+import { google } from 'googleapis';
 
 export interface WorkbookProfile {
   spreadsheetId: string;
@@ -53,10 +54,25 @@ function count(values: string[]): Record<string, number> {
 
 export async function discoverWorkbook(spreadsheetId = config.GOOGLE_SPREADSHEET_ID): Promise<WorkbookProfile> {
   if (!spreadsheetId) throw new Error('GOOGLE_SPREADSHEET_ID is required for workbook discovery');
-  const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/export?format=csv&gid=0`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Workbook export failed with status ${response.status}`);
-  const rows = parseCsv(await response.text());
+  let rows: string[][];
+  if (config.GOOGLE_SERVICE_ACCOUNT_FILE) {
+    const auth = new google.auth.GoogleAuth({ keyFile: config.GOOGLE_SERVICE_ACCOUNT_FILE, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const workbook = await sheets.spreadsheets.get({ spreadsheetId, includeGridData: false });
+    const titles = workbook.data.sheets?.map(sheet => sheet.properties?.title).filter((name): name is string => Boolean(name)) ?? [];
+    const ordered = [...titles.filter(name => /^(List of bugs|Danh sách lỗi)$/i.test(name)), ...titles.filter(name => !/^(List of bugs|Danh sách lỗi)$/i.test(name))];
+    rows = [];
+    for (const title of ordered) {
+      const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${title.replace(/'/g, "''")}'!A:O` });
+      if ((response.data.values ?? []).some(row => row.includes('No') && row.includes('Nội dung') && row.includes('Expected'))) { rows = response.data.values ?? []; break; }
+    }
+    if (!rows.length) throw new Error('Workbook does not contain a compatible master sheet');
+  } else {
+    const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/export?format=csv&gid=0`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Workbook export failed with status ${response.status}`);
+    rows = parseCsv(await response.text());
+  }
   const headerIndex = rows.findIndex((row) => row.includes('No') && row.includes('Nội dung') && row.includes('Expected'));
   if (headerIndex < 0) throw new Error('Workbook does not contain a compatible List of bugs header');
   const headers = rows[headerIndex];
