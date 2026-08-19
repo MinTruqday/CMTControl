@@ -30,6 +30,7 @@
     "qa:sync-sheet": "tsx scripts/sync-sheet.ts",
     "qa:report": "tsx scripts/generate-report.ts",
     "qa:evidence-packs": "tsx scripts/build-issue-evidence-packs.ts",
+    "qa:duplicate-gate": "tsx scripts/check-duplicate-tests.ts",
     "qa:dashboard": "tsx dashboard/server.ts",
     "qa:dashboard:test": "playwright test dashboard/dashboard.spec.ts",
     "qa:all": "tsx engine/orchestrator/index.ts --mode=all",
