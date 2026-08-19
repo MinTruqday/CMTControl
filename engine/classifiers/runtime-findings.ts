@@ -19,7 +19,10 @@ export interface RuntimeFinding {
 }
 
 export function classifyRuntimeFindings(discovery: SiteDiscovery): RuntimeFinding[] {
-  const uniqueFailures = new Map(discovery.assetFailures.filter((failure) => failure.resourceType === 'image').map((failure) => [`${failure.url}:${failure.status}`, failure]));
+  // A failed responsive/mobile/background request is not automatically a
+  // user-visible defect. Only promote an asset when the crawler linked it to a
+  // visible <img> element with failed rendering evidence.
+  const uniqueFailures = new Map(discovery.assetFailures.filter((failure) => failure.resourceType === 'image' && failure.visible === true).map((failure) => [`${failure.url}:${failure.status}`, failure]));
   return [...uniqueFailures.values()].map((failure) => {
     const fingerprint = createHash('sha256').update(`${failure.url}\n${failure.status}`).digest('hex');
     return {

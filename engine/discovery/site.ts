@@ -18,7 +18,7 @@ export interface SiteDiscovery {
   images: string[];
   brokenImages: string[];
   consoleErrors: Array<{ text: string; url: string }>;
-  assetFailures: Array<{ page: string; url: string; status: number; resourceType: string; screenshot?: string; annotatedScreenshot?: string }>;
+  assetFailures: Array<{ page: string; url: string; status: number; resourceType: string; visible?: boolean; screenshot?: string; annotatedScreenshot?: string }>;
 }
 
 function normalizeRoute(href: string, baseUrl: string): string | undefined {
@@ -39,7 +39,7 @@ export async function discoverSite(): Promise<SiteDiscovery> {
   const browser: Browser = await chromium.launch({ headless: config.HEADLESS });
   const page = await browser.newPage();
   const consoleErrors: Array<{ text: string; url: string }> = [];
-  const assetFailures: Array<{ page: string; url: string; status: number; resourceType: string; screenshot?: string; annotatedScreenshot?: string }> = [];
+  const assetFailures: Array<{ page: string; url: string; status: number; resourceType: string; visible?: boolean; screenshot?: string; annotatedScreenshot?: string }> = [];
   let currentPage = '';
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push({ text: message.text(), url: message.location().url });
@@ -86,6 +86,9 @@ export async function discoverSite(): Promise<SiteDiscovery> {
         const rect = image.getBoundingClientRect();
         return { url: image.currentSrc || image.src, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
       }).filter((image) => urls.includes(image.url) && image.width > 0 && image.height > 0), failedUrls);
+      for (const failure of pageFailures) failure.visible = boxes.some((box) => box.url === failure.url);
+      const visibleFailures = pageFailures.filter((failure) => failure.visible);
+      if (visibleFailures.length === 0) continue;
       if (boxes.length > 0) {
         await page.evaluate(({ y, height }) => window.scrollTo({ top: Math.max(0, window.scrollY + y - Math.max(80, (window.innerHeight - height) / 2)), behavior: 'instant' }), boxes[0]);
       }
@@ -94,13 +97,11 @@ export async function discoverSite(): Promise<SiteDiscovery> {
         const rect = image.getBoundingClientRect();
         return { url: image.currentSrc || image.src, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
       }).filter((image) => urls.includes(image.url) && image.width > 0 && image.height > 0), failedUrls);
-      const annotations = viewportBoxes.length > 0
-        ? viewportBoxes.map((box) => ({ x: Math.max(0, Math.round(box.x)), y: Math.max(0, Math.round(box.y)), width: Math.round(box.width), height: Math.round(box.height), label: `Failed image asset: HTTP ${pageFailures.find((failure) => failure.url === box.url)?.status ?? 0}` }))
-        : [{ x: 0, y: 0, width: Math.min(700, page.viewportSize()?.width ?? 700), height: 48, label: `Failed image asset: HTTP ${pageFailures[0].status}` }];
+      const annotations = viewportBoxes.map((box) => ({ x: Math.max(0, Math.round(box.x)), y: Math.max(0, Math.round(box.y)), width: Math.round(box.width), height: Math.round(box.height), label: `Image failed to render: HTTP ${visibleFailures.find((failure) => failure.url === box.url)?.status ?? 0}` }));
       mkdirSync(evidenceDirectory, { recursive: true });
       await page.screenshot({ path: screenshot, fullPage: false });
       await annotateScreenshot(screenshot, annotatedScreenshot, annotations);
-      for (const failure of pageFailures) {
+      for (const failure of visibleFailures) {
         failure.screenshot = screenshot;
         failure.annotatedScreenshot = annotatedScreenshot;
       }

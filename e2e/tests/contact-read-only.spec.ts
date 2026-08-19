@@ -41,6 +41,10 @@ test('E2E-CONTACT-002 @edge', async ({ page, appUrl }) => {
   expect.soft(await form.evaluate((element) => (element as HTMLFormElement).noValidate), 'form must not opt out of browser validation').toBeFalsy();
   expect.soft(await form.evaluate((element) => (element as HTMLFormElement).checkValidity()), 'invalid client-side input must make the form invalid before any submission attempt').toBeFalsy();
   expect.soft(await form.evaluate((element) => Number(element.dataset.qaSubmitAttempts ?? '0')), 'invalid input must not submit after the user clicks Gửi').toBe(0);
+  // Keep the actual invalid field in view for the failure fixture and vision
+  // model; the prior submit-button scroll made the crop point at the header.
+  await email.scrollIntoViewIfNeeded();
+  await expect(email).toBeInViewport();
 });
 
 test('E2E-CONTACT-003 @smoke', async ({ page, appUrl }) => {

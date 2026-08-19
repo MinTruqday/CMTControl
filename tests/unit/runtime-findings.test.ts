@@ -10,8 +10,8 @@ const discovery: SiteDiscovery = {
   brokenImages: [],
   consoleErrors: [],
   assetFailures: [
-    { page: 'https://example.test/vi/product', url: 'https://example.test/assets/broken.webp', status: 404, resourceType: 'image', screenshot: 'evidence/a.png' },
-    { page: 'https://example.test/vi/product', url: 'https://example.test/assets/broken.webp', status: 404, resourceType: 'image', screenshot: 'evidence/a.png' },
+    { page: 'https://example.test/vi/product', url: 'https://example.test/assets/broken.webp', status: 404, resourceType: 'image', visible: true, screenshot: 'evidence/a.png' },
+    { page: 'https://example.test/vi/product', url: 'https://example.test/assets/broken.webp', status: 404, resourceType: 'image', visible: true, screenshot: 'evidence/a.png' },
     { page: 'https://example.test/vi/product', url: 'https://example.test/assets/app.js', status: 500, resourceType: 'script' }
   ]
 };
@@ -28,5 +28,10 @@ describe('runtime finding classifier', () => {
       observedStatus: 404
     });
     expect(findings[0].id).toMatch(/^RUNTIME-ASSET-[a-f0-9]{12}$/);
+  });
+
+  it('keeps an invisible responsive asset failure as diagnostic data, not a product finding', () => {
+    const findings = classifyRuntimeFindings({ ...discovery, assetFailures: [{ page: 'https://example.test/vi/product', url: 'https://example.test/assets/mobile.webp', status: 404, resourceType: 'image', visible: false }] });
+    expect(findings).toEqual([]);
   });
 });

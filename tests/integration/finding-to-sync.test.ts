@@ -22,7 +22,7 @@ describe.sequential('finding-to-sync integration', () => {
     process.chdir(sandbox);
     const discovery: SiteDiscovery = {
       baseUrl: 'https://example.test', discoveredAt: '2026-08-19T00:00:00.000Z', routes: [], images: [], brokenImages: [], consoleErrors: [],
-      assetFailures: [{ page: 'https://example.test/vi/product', url: 'https://example.test/assets/broken.webp', status: 500, resourceType: 'image', screenshot: 'evidence/failure.png' }]
+      assetFailures: [{ page: 'https://example.test/vi/product', url: 'https://example.test/assets/broken.webp', status: 500, resourceType: 'image', visible: true, screenshot: 'evidence/failure.png' }]
     };
 
     const [finding]: RuntimeFinding[] = writeRuntimeFindings(discovery);

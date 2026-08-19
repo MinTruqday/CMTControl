@@ -26,11 +26,19 @@ export const test = base.extend<{ appUrl: string }>({
         writeFileSync(resolve(directory, 'dom.html'), await page.content());
         writeFileSync(resolve(directory, 'result.json'), JSON.stringify({ id: testInfo.title, status: testInfo.status, expectedStatus: testInfo.expectedStatus, errors: testInfo.errors.map((error) => error.message) }, null, 2));
         const screenshot = resolve(directory, 'screenshot.png');
+        const contactForm = testInfo.title.includes('E2E-CONTACT')
+          ? page.locator('form').filter({ has: page.locator('[name="full_name"]') }).first()
+          : undefined;
+        const contactEmail = contactForm?.locator('[name="email"]');
+        if (contactEmail) {
+          await contactEmail.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+          await expect(contactEmail).toBeInViewport();
+        }
         await page.screenshot({ path: screenshot, fullPage: false });
         await annotateScreenshot(screenshot, resolve(directory, 'annotated.png'), [{ x: 0, y: 0, width: Math.min(600, page.viewportSize()?.width ?? 600), height: 48, label: `FAIL: ${testInfo.title}` }]);
         if (testInfo.title.includes('E2E-CONTACT')) {
-          const form = page.locator('form').filter({ has: page.locator('[name="full_name"]') }).first();
-          const email = form.locator('[name="email"]');
+          const form = contactForm as NonNullable<typeof contactForm>;
+          const email = contactEmail as NonNullable<typeof contactEmail>;
           const formBox = await form.boundingBox();
           const emailBox = await email.boundingBox();
           if (formBox && emailBox) {
