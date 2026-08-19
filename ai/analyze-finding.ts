@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { z } from 'zod';
+import { parseJsonResponse, qaPrompt } from './qa-prompt.js';
 
 export interface FindingInput {
   id: string;
@@ -29,14 +30,13 @@ function imageEvidence(paths: string[]): string | undefined {
 }
 
 function parse(value: string): z.infer<typeof schema> {
-  const clean = value.trim().replace(/^```json\s*/i, '').replace(/\s*```$/, '');
-  return schema.parse(JSON.parse(clean));
+  return schema.parse(parseJsonResponse(value));
 }
 
 export async function analyzeFinding(finding: FindingInput, baseUrl = process.env.OLLAMA_BASE_URL, model = process.env.OLLAMA_MODEL): Promise<AiFindingAnalysis> {
   if (!baseUrl || !model) throw new Error('OLLAMA_CONFIGURATION_REQUIRED');
   const image = imageEvidence(finding.evidence);
-  const prompt = ['You are a QA advisory assistant.', 'Use only the supplied deterministic facts and optional screenshot.', 'Return valid JSON only with this exact shape:', '{"confidence":0.0,"possibleCause":"","screenshotAssessment":"","suspectedFiles":[],"recommendation":"","issueDraft":{"title":"","actual":"","expected":"","reproduction":[""]}}', 'Do not decide PASS or FAIL. Do not claim a screenshot proves server-side cause. If no source is supplied, suspectedFiles must be an empty array.', JSON.stringify({ id: finding.id, testId: finding.testId, deterministicPriority: finding.priority, deterministicClassification: finding.classification, description: finding.description, expected: finding.expected })].join('\n');
+  const prompt = qaPrompt({ task: 'Phân tích một finding QA và soạn nháp issue để developer điều tra.', outputShape: '{"confidence":0.0,"possibleCause":"","screenshotAssessment":"","suspectedFiles":[],"recommendation":"","issueDraft":{"title":"","actual":"","expected":"","reproduction":[""]}}', rules: ['Không quyết định PASS/FAIL hoặc tự thay đổi severity/priority.', 'Ảnh chỉ chứng minh nội dung nhìn thấy; không dùng ảnh để khẳng định nguyên nhân phía server.', 'Không có source code được cung cấp thì suspectedFiles phải là [].', 'possibleCause là giả thuyết có điều kiện; recommendation là bước điều tra cụ thể.'], evidence: { id: finding.id, testId: finding.testId, deterministicPriority: finding.priority, deterministicClassification: finding.classification, description: finding.description, expected: finding.expected, screenshotProvided: Boolean(image) } });
   const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, prompt, images: image ? [readFileSync(image).toString('base64')] : undefined, stream: false, think: false, format: 'json', options: { temperature: 0.1, num_predict: 900 } }), signal: AbortSignal.timeout(120000) });
   if (!response.ok) throw new Error(`OLLAMA_HTTP_${response.status}`);
   const payload = await response.json() as { response?: string };

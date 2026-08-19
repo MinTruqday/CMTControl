@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { z } from 'zod';
+import { parseJsonResponse, qaPrompt } from './qa-prompt.js';
 
 interface Finding {
   id: string;
@@ -10,6 +12,14 @@ interface Finding {
   description: string;
   expected: string;
 }
+
+const analysisSchema = z.object({
+  items: z.array(z.object({
+    findingId: z.string().min(1),
+    possibleCause: z.string().min(1).max(1200),
+    investigation: z.string().min(1).max(1200)
+  })).max(100)
+});
 
 function load(): Finding[] {
   const runtimePath = resolve('bugs/runtime-findings.json');
@@ -25,12 +35,18 @@ async function main(): Promise<void> {
   if (!model) throw new Error('OLLAMA_MODEL_REQUIRED');
   const findings = load();
   if (!findings.length) throw new Error('NO_FINDINGS_AVAILABLE');
-  const prompt = ['You are a QA analysis assistant.', 'Use only the deterministic facts below.', 'For each finding, provide a concise likely cause and a suggested developer investigation step.', 'Do not decide severity, do not claim certainty, do not propose writing to external systems.', JSON.stringify(findings)].join('\n');
+  const prompt = qaPrompt({
+    task: 'Tóm tắt các finding QA cho developer điều tra, không thay thế kết quả kiểm thử xác định.',
+    outputShape: '{"items":[{"findingId":"","possibleCause":"","investigation":""}]}',
+    rules: ['Mỗi finding có tối đa một mục; possibleCause là giả thuyết, không khẳng định chắc chắn.', 'Không thay đổi severity/priority và không đề xuất ghi hoặc sửa hệ thống bên ngoài.'],
+    evidence: findings
+  });
   const response = await fetch(`${rawBase.replace(/\/$/, '')}/api/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, prompt, stream: false, think: false, options: { temperature: 0.1, num_predict: 180 } }), signal: AbortSignal.timeout(120000) });
   if (!response.ok) throw new Error(`OLLAMA_HTTP_${response.status}`);
   const value = await response.json() as { response?: string; eval_count?: number; total_duration?: number };
   if (!value.response) throw new Error('OLLAMA_EMPTY_RESPONSE');
-  const result = { generatedAt: new Date().toISOString(), model, findingIds: findings.map((item) => item.id), advisoryOnly: true, analysis: value.response.trim(), evaluationTokenCount: value.eval_count ?? null, totalDurationNs: value.total_duration ?? null };
+  const analysis = analysisSchema.parse(parseJsonResponse(value.response));
+  const result = { generatedAt: new Date().toISOString(), model, findingIds: findings.map((item) => item.id), advisoryOnly: true, analysis, evaluationTokenCount: value.eval_count ?? null, totalDurationNs: value.total_duration ?? null };
   mkdirSync(resolve('reports/current'), { recursive: true });
   writeFileSync(resolve('reports/current/ollama-findings-analysis.json'), JSON.stringify(result, null, 2));
   process.stdout.write(`${JSON.stringify({ model, findingCount: findings.length, advisoryOnly: true, output: 'reports/current/ollama-findings-analysis.json' })}\n`);
