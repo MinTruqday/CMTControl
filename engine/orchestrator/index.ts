@@ -23,8 +23,10 @@ function main(): void {
   mkdirSync(reportDir, { recursive: true });
   const duplicateStatus = execute('duplicate-gate', 'npm', ['run', 'qa:duplicate-gate']);
   if (duplicateStatus !== 0) { process.exitCode = duplicateStatus; return; }
-  const groups = (mode === 'all' ? ['environment', 'api', 'ui', 'e2e', 'visual', 'discovery'] : [mode]).filter((group) => group !== 'visual' || config.VISUAL_TEST_ENABLED);
+  const groups = (mode === 'all' ? ['unit', 'integration', 'environment', 'api', 'ui', 'e2e', 'visual', 'discovery'] : [mode]).filter((group) => group !== 'visual' || config.VISUAL_TEST_ENABLED);
   const statuses = groups.map((group) => {
+    if (group === 'unit') return execute(group, 'npm', ['run', 'test:unit']);
+    if (group === 'integration') return execute(group, 'npm', ['run', 'test:integration']);
     if (group === 'environment') return execute(group, 'npm', ['run', 'qa:check-env']);
     if (group === 'api') return execute(group, 'npm', ['run', 'qa:api:live']);
     if (group === 'discovery') {

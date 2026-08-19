@@ -42,3 +42,29 @@ test('E2E-CONTACT-002 @edge', async ({ page, appUrl }) => {
   expect.soft(await form.evaluate((element) => (element as HTMLFormElement).checkValidity()), 'invalid client-side input must make the form invalid before any submission attempt').toBeFalsy();
   expect.soft(await form.evaluate((element) => Number(element.dataset.qaSubmitAttempts ?? '0')), 'invalid input must not submit after the user clicks Gửi').toBe(0);
 });
+
+test('E2E-CONTACT-003 @smoke', async ({ page, appUrl }) => {
+  await page.goto(`${appUrl}/vi/contact`, { waitUntil: 'domcontentloaded' });
+  const form = page.locator('form').filter({ has: page.locator('[name="full_name"]') }).first();
+  await form.scrollIntoViewIfNeeded();
+  await form.locator('[name="full_name"]').fill('QA Valid Journey');
+  await form.locator('[name="email"]').fill('qa.valid@example.test');
+  await form.locator('[name="phone"]').fill('0900000000');
+  await form.locator('[name="company"]').fill('QA Runtime Company');
+  await form.locator('[name="industry"]').selectOption({ index: 1 });
+  await form.locator('[name="message"]').fill('Safe valid-form journey; the test prevents external submission.');
+
+  // Let the genuine click and submit event happen, but prevent default before
+  // it can create a consultation record on the shared dev environment.
+  await form.evaluate((element) => {
+    element.dataset.qaSubmitAttempts = '0';
+    element.addEventListener('submit', (event) => {
+      element.dataset.qaSubmitAttempts = String(Number(element.dataset.qaSubmitAttempts ?? '0') + 1);
+      event.preventDefault();
+    });
+  });
+  expect(await form.evaluate((element) => (element as HTMLFormElement).checkValidity()), 'valid user input must pass native field validity').toBeTruthy();
+  await form.locator('button[type="submit"], input[type="submit"]').first().click({ noWaitAfter: true });
+  await page.waitForTimeout(300);
+  expect(await form.evaluate((element) => Number(element.dataset.qaSubmitAttempts ?? '0')), 'valid form click must reach the submit event').toBe(1);
+});

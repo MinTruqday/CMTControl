@@ -16,6 +16,8 @@ npm run test:integration
 npm run qa:all
 ```
 
+`qa:all` always starts with `test:unit` and `test:integration`; their status is written into the run report before runtime browser checks begin.
+
 The runner never writes to source projects. Google Sheets synchronization is disabled by default and requires explicit credentials and configuration. Public-sheet discovery is read-only.
 
 ## Runtime checks
