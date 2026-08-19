@@ -88,6 +88,34 @@ async function appendBug(bug: LocalBug): Promise<number> {
   return nextNo;
 }
 
+async function ensureIssueSheet(bug: LocalBug, issueNo: number): Promise<void> {
+  const sheets = getClient();
+  const spreadsheetId = config.GOOGLE_SPREADSHEET_ID as string;
+  const title = `Issue_no.${String(issueNo).padStart(2, '0')}`;
+  const workbook = await sheets.spreadsheets.get({ spreadsheetId, includeGridData: false });
+  const existing = workbook.data.sheets?.find(sheet => sheet.properties?.title === title);
+  let sheetId = existing?.properties?.sheetId;
+  if (sheetId === undefined || sheetId === null) {
+    const created = await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: [{ addSheet: { properties: { title } } }] } });
+    sheetId = created.data.replies?.[0]?.addSheet?.properties?.sheetId;
+  }
+  if (sheetId === undefined || sheetId === null) throw new Error(`ISSUE_SHEET_CREATE_FAILED_${issueNo}`);
+  const detail = [
+    ['QA Issue evidence'],
+    ['Issue number', `#${issueNo}`],
+    ['Finding ID', bug.feature],
+    ['Status', bug.status],
+    ['Priority', bug.priority],
+    ['Actual', bug.description],
+    ['Expected', bug.expected],
+    ['Evidence files (local storage)'],
+    ...bug.evidence.map(file => [file]),
+    ['Image embedding status', config.EVIDENCE_STORAGE_TYPE === 'google-drive' ? 'Pending configured image helper' : 'Blocked: EVIDENCE_STORAGE_TYPE=local. Google Sheets cannot embed a local machine file.']
+  ];
+  await sheets.spreadsheets.values.update({ spreadsheetId, range: `'${title}'!A1:B${detail.length}`, valueInputOption: 'USER_ENTERED', requestBody: { values: detail } });
+  await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: [{ repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 2 }, cell: { userEnteredFormat: { backgroundColor: { red: 0.06, green: 0.64, blue: 0.5 }, textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } }] } });
+}
+
 export function queueSheetSync(bug: LocalBug): SyncAudit {
   const state = config.SHEET_SYNC_ENABLED ? 'PENDING_CREDENTIALS' : 'PENDING_CONFIGURATION';
   const reason = config.SHEET_SYNC_ENABLED
@@ -104,9 +132,13 @@ export async function syncPendingBugs(): Promise<SyncAudit[]> {
   const bugs = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) as LocalBug[] : [];
   const audits: SyncAudit[] = [];
   for (const bug of bugs) {
-    if (bug.syncStatus === 'COMPLETE') continue;
+    if (bug.syncStatus === 'COMPLETE') {
+      if (bug.sheetIssueNo) await ensureIssueSheet(bug, bug.sheetIssueNo);
+      continue;
+    }
     try {
       const issueNo = await appendBug(bug);
+      await ensureIssueSheet(bug, issueNo);
       bug.syncStatus = 'COMPLETE';
       bug.sheetIssueNo = issueNo;
       audits.push(appendAudit({ bugId: bug.id, timestamp: new Date().toISOString(), state: 'COMPLETE', reason: `Appended or resolved Issue_no.${issueNo}.` }));
