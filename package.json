@@ -16,6 +16,7 @@
     "qa:locale": "playwright test --grep @locale",
     "qa:role": "playwright test --grep @role",
     "qa:accessibility": "playwright test --grep @accessibility",
+    "qa:performance": "playwright test --grep @performance",
     "qa:ai": "tsx ai/client/health.ts",
     "qa:ai:findings": "tsx ai/analyze-findings.ts",
     "qa:ai:finding": "tsx ai/analyze-finding.ts",
