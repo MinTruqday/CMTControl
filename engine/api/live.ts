@@ -5,26 +5,27 @@ import { createRunId } from '../run/run-id.js';
 import { log } from '../logging/logger.js';
 
 async function main(): Promise<void> {
-  const baseUrl = requireBaseUrl();
+  const apiConfigured = Boolean(config.API_BASE_URL);
+  const baseUrl = config.API_BASE_URL ?? requireBaseUrl();
   const runId = process.env.QA_RUN_ID ?? createRunId();
   const started = performance.now();
   let response: Response;
   try {
-    response = await fetch(baseUrl, { redirect: 'follow', headers: { accept: 'text/html' } });
+    response = await fetch(baseUrl, { redirect: 'follow', headers: { accept: apiConfigured ? 'application/json' : 'text/html' } });
   } catch (error) {
     throw new Error(`Target environment is unreachable: ${error instanceof Error ? error.message : String(error)}`);
   }
   const durationMs = Math.round(performance.now() - started);
   const body = await response.text();
   const artifact = {
-    id: 'API-HEALTH-001',
+    id: apiConfigured ? 'API-HEALTH-001' : 'HTTP-PAGE-HEALTH-001',
     method: 'GET',
     url: baseUrl,
     status: response.status,
     contentType: response.headers.get('content-type'),
     durationMs,
     bodyLength: body.length,
-    passed: response.ok && /text\/html/i.test(response.headers.get('content-type') ?? '') && body.length > 0
+    passed: response.ok && (apiConfigured ? /json/i.test(response.headers.get('content-type') ?? '') : /text\/html/i.test(response.headers.get('content-type') ?? '')) && body.length > 0
   };
   const output = resolve(config.EVIDENCE_OUTPUT_DIR, runId, artifact.id);
   mkdirSync(output, { recursive: true });

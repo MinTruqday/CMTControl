@@ -11,6 +11,8 @@ npm install
 npx playwright install --with-deps chromium
 npm run typecheck
 npm test
+npm run test:unit
+npm run test:integration
 npm run qa:all
 ```
 
@@ -25,6 +27,12 @@ npm run qa:discover-sheet
 npm run qa:triage
 npm run qa:report
 ```
+
+## HTTP and API coverage
+
+`npm run qa:api:live` runs the committed Postman collection through Newman. With only `BASE_URL`, it verifies safe public `GET` website behavior; it does not pretend that HTML pages are a backend API.
+
+Set `API_BASE_URL` only when the backend API base is known. `npm run qa:api:direct` then requests that base as JSON and records API health evidence. Endpoint-level API tests require the backend contract (OpenAPI/Swagger, a Postman collection, or documented routes and non-production credentials); the runner does not guess or mutate unknown endpoints.
 
 `qa:discover-site` crawls localized public routes, records failed first-party assets, and writes `reports/current/site-discovery.json`. `qa:triage` turns deterministic failed image responses into deduplicated local findings in `bugs/runtime-findings.json`; it does not modify the target application or a spreadsheet.
 

@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test as base } from '@playwright/test';
 import sharp from 'sharp';
@@ -18,6 +18,8 @@ export const test = base.extend<{ appUrl: string }>({
       const testId = testInfo.title.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-|-$/g, '');
       const directory = resolve(config.EVIDENCE_OUTPUT_DIR, process.env.QA_RUN_ID ?? 'manual', testInfo.project.name, testId);
       mkdirSync(directory, { recursive: true });
+      const previousEvidenceError = resolve(directory, 'evidence-error.json');
+      if (existsSync(previousEvidenceError)) unlinkSync(previousEvidenceError);
       try {
         writeFileSync(resolve(directory, 'console.json'), JSON.stringify(consoleEvents, null, 2));
         writeFileSync(resolve(directory, 'network.json'), JSON.stringify(failedRequests, null, 2));
@@ -33,16 +35,19 @@ export const test = base.extend<{ appUrl: string }>({
           const emailBox = await email.boundingBox();
           if (formBox && emailBox) {
             const focus = resolve(directory, 'focus.png');
-            const scroll = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
             const image = sharp(screenshot);
             const metadata = await image.metadata();
-            const left = Math.max(0, Math.floor(scroll.x + emailBox.x - 20));
-            const top = Math.max(0, Math.floor(scroll.y + emailBox.y - 40));
-            const width = Math.min((metadata.width ?? 1) - left, Math.ceil(emailBox.width) + 40);
-            const height = Math.min((metadata.height ?? 1) - top, Math.ceil(emailBox.height) + 80);
+            // The failure screenshot is viewport-only, and boundingBox is also
+            // viewport-relative. Do not add document scroll offsets here.
+            const imageWidth = metadata.width ?? 1;
+            const imageHeight = metadata.height ?? 1;
+            const left = Math.min(imageWidth - 1, Math.max(0, Math.floor(emailBox.x - 20)));
+            const top = Math.min(imageHeight - 1, Math.max(0, Math.floor(emailBox.y - 40)));
+            const width = Math.max(1, Math.min(imageWidth - left, Math.ceil(emailBox.width) + 40));
+            const height = Math.max(1, Math.min(imageHeight - top, Math.ceil(emailBox.height) + 80));
             await image.extract({ left, top, width, height }).png().toFile(focus);
-            await annotateScreenshot(focus, resolve(directory, 'focus.annotated.png'), [{ x: Math.round(scroll.x + emailBox.x - left), y: Math.round(scroll.y + emailBox.y - top), width: Math.round(emailBox.width), height: Math.round(emailBox.height), label: 'Invalid email validation is bypassed' }]);
-            writeFileSync(resolve(directory, 'focus.json'), JSON.stringify({ target: '[name=email]', reason: 'The contact form opts out of browser validation.', screenshot: focus, sourceScreenshot: screenshot }, null, 2));
+            await annotateScreenshot(focus, resolve(directory, 'focus.annotated.png'), [{ x: Math.round(emailBox.x - left), y: Math.round(emailBox.y - top), width: Math.round(emailBox.width), height: Math.round(emailBox.height), label: 'Invalid email validation is bypassed' }]);
+            writeFileSync(resolve(directory, 'focus.json'), JSON.stringify({ target: '[name=email]', reason: 'The contact form opts out of browser validation and attempts submit after invalid input.', screenshot: focus, sourceScreenshot: screenshot }, null, 2));
           }
         }
       } catch (error) {
