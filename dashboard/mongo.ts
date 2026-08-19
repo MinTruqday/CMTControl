@@ -25,13 +25,21 @@ export async function mongoHealth(): Promise<'PASS' | 'SKIPPED' | 'FAIL'> {
 }
 
 export async function persistRun(run: Record<string, unknown>): Promise<void> {
-  const database = await db();
-  if (!database) return;
-  await database.collection('qa_runs').updateOne({ startedAt: run.startedAt }, { $set: { ...run, updatedAt: new Date().toISOString() } }, { upsert: true });
+  try {
+    const database = await db();
+    if (!database) return;
+    await database.collection('qa_runs').updateOne({ startedAt: run.startedAt }, { $set: { ...run, updatedAt: new Date().toISOString() } }, { upsert: true });
+  } catch {
+    client = null;
+  }
 }
 
 export async function persistSheetSnapshot(profile: Record<string, unknown>): Promise<void> {
-  const database = await db();
-  if (!database) return;
-  await database.collection('sheet_snapshots').insertOne({ ...profile, capturedAt: new Date().toISOString() });
+  try {
+    const database = await db();
+    if (!database) return;
+    await database.collection('sheet_snapshots').insertOne({ ...profile, capturedAt: new Date().toISOString() });
+  } catch {
+    client = null;
+  }
 }
