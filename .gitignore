@@ -1,0 +1,16 @@
+node_modules/
+.tools/
+dist/
+.env
+secret/
+.qa-control.json
+*.log
+test-results/
+playwright-report/
+reports/current/
+reports/history/
+evidence/
+visual/actual/
+visual/diff/
+storage/
+bugs/*.json

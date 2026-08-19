@@ -1,0 +1,13 @@
+services:
+  qa-runner:
+    build: .
+    env_file:
+      - .env
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./reports:/app/reports
+      - ./evidence:/app/evidence
+      - ./visual:/app/visual
+      - ./storage:/app/storage
+      - ${GOOGLE_SERVICE_ACCOUNT_FILE:-/dev/null}:/run/secrets/google-service-account.json:ro

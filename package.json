@@ -1,0 +1,48 @@
+{
+  "name": "qa-automation-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "qa:api": "tsx engine/api/live.ts",
+    "qa:api:live": "tsx engine/api/live.ts",
+    "qa:ui": "playwright test ui/tests",
+    "qa:e2e": "playwright test e2e/tests",
+    "qa:visual": "playwright test visual/tests",
+    "qa:smoke": "playwright test --grep @smoke",
+    "qa:regression": "playwright test",
+    "qa:edge": "playwright test --grep @edge",
+    "qa:locale": "playwright test --grep @locale",
+    "qa:role": "playwright test --grep @role",
+    "qa:ai": "tsx ai/client/health.ts",
+    "qa:ai:findings": "tsx ai/analyze-findings.ts",
+    "qa:discover-site": "tsx scripts/discover-site.ts",
+    "qa:discover-sheet": "tsx scripts/discover-workbook.ts",
+    "qa:triage": "tsx scripts/triage-runtime-findings.ts",
+    "qa:triage-tests": "tsx scripts/triage-test-failures.ts",
+    "qa:check-env": "tsx scripts/check-environment.ts",
+    "qa:check-google": "tsx scripts/check-google-access.ts",
+    "qa:check-google-drive": "tsx scripts/check-google-drive-access.ts",
+    "qa:sync-sheet": "tsx scripts/sync-sheet.ts",
+    "qa:report": "tsx scripts/generate-report.ts",
+    "qa:evidence-packs": "tsx scripts/build-issue-evidence-packs.ts",
+    "qa:dashboard": "tsx dashboard/server.ts",
+    "qa:dashboard:test": "playwright test dashboard/dashboard.spec.ts",
+    "qa:all": "tsx engine/orchestrator/index.ts --mode=all",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "googleapis": "^176.0.0",
+    "sharp": "^0.35.3",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^22.15.32",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,27 @@
+# Master Spec Audit
+
+Audit date: 19/08/2026
+
+| Capability | Current evidence | Status |
+|---|---|---|
+| Environment safety | `SOURCE_WRITE_ENABLED=false`; environment check passes | Implemented |
+| Public target check | Dashboard preflight and `qa:check-env` return HTTP 200 | Implemented |
+| API smoke | `API-HEALTH-001` executes against the configured target | Implemented |
+| UI and locale checks | Playwright navigation, crawl, responsive and SEO suites | Implemented |
+| E2E checks | Contact read-only and role-gated suites | Implemented with credential-gated role coverage |
+| Visual checks | Playwright screenshot assertions and baselines | Implemented |
+| Failure evidence | Screenshot, DOM, network, console and annotation artifacts under `evidence/` | Implemented for applicable failures |
+| Local issue evidence packs | `qa:evidence-packs` creates per-finding actual/expected/evidence manifests without remote writes | Implemented |
+| Manual screenshot | Dashboard capture stores a full-page image and renders it in Evidence | Implemented |
+| Emergency stop | Dashboard terminates the run process group; runtime verification ended with code 130 | Implemented |
+| Operator configuration | Dashboard persists target URL, tester name, Sheet link and Ollama settings locally | Implemented |
+| Google Sheet access | Service account access check and workbook discovery work; direct Sheet link is available in dashboard | Implemented |
+| Google Sheet writes | Explicit adapter exists; dashboard disables automatic writes | Partial by design |
+| Issue evidence sheets and remote image embedding | Local evidence storage is configured at `/home/trungcm/Documents/evidence`; no `Issue_no.xx` canvas creation flow is enabled | Pending explicit operator authorization for Sheet writes |
+| Ollama availability | Local tag check and actual inference using `gemma4:e2b` passed | Implemented |
+| Ollama-assisted failure analysis | `npm run qa:ai:findings` writes an advisory-only analysis for deterministic findings; it does not classify or write to Sheet | Implemented |
+| Dashboard load verification | Chromium desktop and mobile dashboard tests pass | Implemented |
+| Run history and report | Dashboard reads historical run metadata; HTML report is available | Implemented |
+| Source inspection and automated remediation | No application source or deployment access is available in this workspace | Out of scope until source access is provided |
+
+The remaining major implementation work is the reviewed, opt-in Google Sheets evidence workflow and optional Ollama-assisted analysis. Neither should write to the user workbook automatically.
