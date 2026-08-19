@@ -36,7 +36,7 @@ function appendAudit(audit: SyncAudit): SyncAudit {
   return audit;
 }
 
-function canonicalFindingKey(bug: LocalBug): string {
+export function canonicalFindingKey(bug: LocalBug): string {
   const urls = bug.description.match(/https?:\/\/[^\s,;]+/g) ?? [];
   return urls.length > 0 ? `${bug.testId}:${urls.at(-1)}` : bug.fingerprint;
 }

@@ -2,7 +2,9 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 const booleanValue = z.enum(['true', 'false']).transform((value) => value === 'true');
-const optionalUrl = z.preprocess((value) => value === '' ? undefined : value, z.string().url().optional());
+// Vitest/Vite reserves BASE_URL as `/` for its own module base. Treat that
+// framework sentinel like an unset QA URL so pure tests can load config.
+const optionalUrl = z.preprocess((value) => value === '' || value === '/' ? undefined : value, z.string().url().optional());
 const optionalText = z.preprocess((value) => value === '' ? undefined : value, z.string().min(1).optional());
 
 const schema = z.object({

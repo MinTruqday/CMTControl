@@ -38,7 +38,9 @@
     "qa:dashboard:test": "playwright test dashboard/dashboard.spec.ts",
     "qa:all": "tsx engine/orchestrator/index.ts --mode=all",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run engine/run/run-id.test.ts tests/unit",
+    "test:integration": "vitest run tests/integration --pool=forks --poolOptions.forks.singleFork=true"
   },
   "dependencies": {
     "dotenv": "^16.6.1",

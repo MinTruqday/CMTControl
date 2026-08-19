@@ -2,7 +2,14 @@
   "info": { "name": "QA Automation Runtime API", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
   "variable": [{ "key": "baseUrl", "value": "https://dev.aaainnovations.vn" }],
   "item": [
-    { "name": "Public website availability", "request": { "method": "GET", "header": [], "url": "{{baseUrl}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('HTTP 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));", "pm.test('HTML content type', () => pm.expect(pm.response.headers.get('content-type') || '').to.include('text/html'));", "pm.test('Response time below 10s', () => pm.expect(pm.response.responseTime).to.be.below(10000));"] } }] },
+    {
+      "name": "Public pages (safe GET)",
+      "item": [
+        { "name": "Vietnamese entry page", "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/vi" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('HTTP 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));", "pm.test('HTML content type', () => pm.expect(pm.response.headers.get('content-type') || '').to.include('text/html'));", "pm.test('Has a document title', () => pm.expect(pm.response.text()).to.match(/<title>[^<]+<\\/title>/i));", "pm.test('Response time below 10s', () => pm.expect(pm.response.responseTime).to.be.below(10000));"] } }] },
+        { "name": "Contact form page", "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/vi/contact" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('HTTP 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));", "pm.test('Contains contact form', () => pm.expect(pm.response.text()).to.include('<form'));", "pm.test('Contains email input', () => pm.expect(pm.response.text()).to.match(/name=\\\"email\\\"/i));", "pm.test('Response time below 10s', () => pm.expect(pm.response.responseTime).to.be.below(10000));"] } }] },
+        { "name": "Known product page", "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/vi/product/1shop" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Page itself does not return 5xx', () => pm.expect(pm.response.code).to.be.below(500));", "pm.test('HTML content type', () => pm.expect(pm.response.headers.get('content-type') || '').to.include('text/html'));", "pm.test('Response time below 10s', () => pm.expect(pm.response.responseTime).to.be.below(10000));"] } }] }
+      ]
+    },
     { "name": "Negative route handling", "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/__qa_nonexistent_route__" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Does not return server error', () => pm.expect(pm.response.code).to.be.below(500));", "pm.test('Response time below 10s', () => pm.expect(pm.response.responseTime).to.be.below(10000));"] } }] }
   ]
 }
