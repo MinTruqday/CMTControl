@@ -9,7 +9,8 @@ export function qaPrompt(input: { task: string; outputShape: string; rules: stri
     ...input.rules.map((rule) => `Quy tắc riêng: ${rule}`),
     `Schema JSON bắt buộc: ${input.outputShape}`,
     'Chỉ trả về một JSON hợp lệ khớp schema. Không markdown, code fence, hoặc giải thích.',
-    '<deterministic_evidence>', JSON.stringify(input.evidence), '</deterministic_evidence>'
+    '<deterministic_evidence>', JSON.stringify(input.evidence), '</deterministic_evidence>',
+    'Kết thúc dữ liệu bằng chứng. Không tóm tắt hoặc lặp lại evidence. Bây giờ chỉ trả về một JSON hợp lệ khớp đúng schema ở trên.'
   ].join('\n');
 }
 

@@ -21,6 +21,7 @@
     "qa:ai:findings": "tsx ai/analyze-findings.ts",
     "qa:ai:finding": "tsx ai/analyze-finding.ts",
     "qa:ai:test-cases": "tsx ai/generate-test-cases.ts",
+    "qa:ai:test-plan": "tsx ai/generate-test-plan.ts",
     "qa:ai:summary": "tsx ai/summarize-report.ts",
     "qa:discover-site": "tsx scripts/discover-site.ts",
     "qa:discover-sheet": "tsx scripts/discover-workbook.ts",
