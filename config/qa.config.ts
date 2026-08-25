@@ -11,6 +11,8 @@ const schema = z.object({
   QA_ENV: z.string().default('local'),
   BASE_URL: optionalUrl,
   API_BASE_URL: optionalUrl,
+  ROLE_TEST_ENABLED: booleanValue.default('false'),
+  ROLE_TEST_SPEC_FILE: optionalText,
   OLLAMA_BASE_URL: optionalUrl,
   OLLAMA_MODEL: optionalText,
   GOOGLE_SPREADSHEET_ID: optionalText,

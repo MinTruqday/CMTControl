@@ -34,13 +34,15 @@
     "qa:report": "tsx scripts/generate-report.ts",
     "qa:evidence-packs": "tsx scripts/build-issue-evidence-packs.ts",
     "qa:duplicate-gate": "tsx scripts/check-duplicate-tests.ts",
+    "qa:coverage": "tsx scripts/generate-coverage.ts",
     "qa:dashboard": "tsx dashboard/server.ts",
     "qa:dashboard:test": "playwright test dashboard/dashboard.spec.ts",
     "qa:all": "tsx engine/orchestrator/index.ts --mode=all",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run engine/run/run-id.test.ts tests/unit",
-    "test:integration": "vitest run tests/integration --pool=forks --poolOptions.forks.singleFork=true"
+    "test:integration": "vitest run tests/integration --pool=forks --poolOptions.forks.singleFork=true",
+    "audit:prod": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "dotenv": "^16.6.1",
@@ -50,7 +52,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.54.1",
+    "@playwright/test": "1.55.1",
     "@types/node": "^22.15.32",
     "newman": "^6.2.2",
     "tsx": "^4.20.3",

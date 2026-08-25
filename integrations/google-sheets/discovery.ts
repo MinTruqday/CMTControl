@@ -2,6 +2,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config } from '../../config/qa.config.js';
 import { google } from 'googleapis';
+import { extractSheetCoverage, type SheetCoverageItem } from '../../engine/coverage/model.js';
 
 export interface WorkbookProfile {
   spreadsheetId: string;
@@ -14,6 +15,8 @@ export interface WorkbookProfile {
   unclassifiedIssueNumbers: number[];
   issuesWithoutStatus: number[];
   latestIssues: Array<{ no: number; createdBy: string; createdDate: string; feature: string; description: string; priority: string; status: string }>;
+  sheetNames: string[];
+  coverageItems: SheetCoverageItem[];
   source: 'google-export';
 }
 
@@ -55,16 +58,21 @@ function count(values: string[]): Record<string, number> {
 export async function discoverWorkbook(spreadsheetId = config.GOOGLE_SPREADSHEET_ID): Promise<WorkbookProfile> {
   if (!spreadsheetId) throw new Error('GOOGLE_SPREADSHEET_ID is required for workbook discovery');
   let rows: string[][];
+  let workbookSheets: Array<{ title: string; rows: string[][] }> = [];
   if (config.GOOGLE_SERVICE_ACCOUNT_FILE) {
     const auth = new google.auth.GoogleAuth({ keyFile: config.GOOGLE_SERVICE_ACCOUNT_FILE, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
     const sheets = google.sheets({ version: 'v4', auth });
     const workbook = await sheets.spreadsheets.get({ spreadsheetId, includeGridData: false });
     const titles = workbook.data.sheets?.map(sheet => sheet.properties?.title).filter((name): name is string => Boolean(name)) ?? [];
     const ordered = [...titles.filter(name => /^(List of bugs|Danh sách lỗi)$/i.test(name)), ...titles.filter(name => !/^(List of bugs|Danh sách lỗi)$/i.test(name))];
+    const readableTitles = ordered.filter((name) => !/^Issue_no\.\d+$/i.test(name));
     rows = [];
-    for (const title of ordered) {
-      const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${title.replace(/'/g, "''")}'!A:O` });
-      if ((response.data.values ?? []).some(row => row.includes('No') && row.includes('Nội dung') && row.includes('Expected'))) { rows = response.data.values ?? []; break; }
+    const response = await sheets.spreadsheets.values.batchGet({ spreadsheetId, ranges: readableTitles.map((title) => `'${title.replace(/'/g, "''")}'!A:Z`) });
+    for (let index = 0; index < readableTitles.length; index += 1) {
+      const title = readableTitles[index];
+      const sheetRows = (response.data.valueRanges?.[index]?.values ?? []) as string[][];
+      workbookSheets.push({ title, rows: sheetRows });
+      if (!rows.length && sheetRows.some(row => row.includes('No') && row.includes('Nội dung') && row.includes('Expected'))) rows = sheetRows;
     }
     if (!rows.length) throw new Error('Workbook does not contain a compatible master sheet');
   } else {
@@ -72,6 +80,7 @@ export async function discoverWorkbook(spreadsheetId = config.GOOGLE_SPREADSHEET
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Workbook export failed with status ${response.status}`);
     rows = parseCsv(await response.text());
+    workbookSheets = [{ title: 'gid-0', rows }];
   }
   const headerIndex = rows.findIndex((row) => row.includes('No') && row.includes('Nội dung') && row.includes('Expected'));
   if (headerIndex < 0) throw new Error('Workbook does not contain a compatible List of bugs header');
@@ -90,6 +99,8 @@ export async function discoverWorkbook(spreadsheetId = config.GOOGLE_SPREADSHEET
     unclassifiedIssueNumbers: records.filter((row) => !(row[indexOf('Phân loại')] ?? '')).map((row) => Number(row[0])),
     issuesWithoutStatus: records.filter((row) => !(row[indexOf('Trạng thái')] ?? '')).map((row) => Number(row[0])),
     latestIssues: records.slice(-8).reverse().map((row) => ({ no: Number(row[0]), createdBy: row[indexOf('Người tạo')] ?? '', createdDate: row[indexOf('Ngày tạo')] ?? '', feature: row[indexOf('Chức năng')] ?? '', description: row[indexOf('Nội dung')] ?? '', priority: row[indexOf('Độ ưu tiên')] ?? '', status: row[indexOf('Trạng thái')] ?? '' })),
+    sheetNames: workbookSheets.map((sheet) => sheet.title),
+    coverageItems: workbookSheets.flatMap((sheet) => extractSheetCoverage(sheet.title, sheet.rows)),
     source: 'google-export'
   };
   mkdirSync(resolve('reports/current'), { recursive: true });

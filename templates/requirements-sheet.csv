@@ -1,0 +1,4 @@
+Requirement ID,Requirement,Expected,Test ID,Priority,Notes
+REQ-NAV-001,Người dùng mở được trang giới thiệu,Trang trả HTTP thành công và hiển thị đúng nội dung,UI-NAV-001,High,
+REQ-CONTACT-001,Email không hợp lệ không được gửi form,Form hiển thị validation và không gửi request,E2E-CONTACT-002,High,
+REQ-NEW-001,Requirement chưa có automated test,Mô tả kết quả mong đợi,,Medium,Dòng này sẽ được báo UNMAPPED

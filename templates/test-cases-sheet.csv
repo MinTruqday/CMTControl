@@ -1,0 +1,4 @@
+Test ID,Test Case,Expected,Priority,Preconditions
+UI-NAV-001,Mở trang chủ và điều hướng chính,Không có lỗi HTTP hoặc trang lỗi,High,Website truy cập được
+E2E-CONTACT-002,Nhập email sai định dạng vào form liên hệ,Form chặn submit và hiển thị validation,High,Trang contact truy cập được
+API-HEALTH-001,Gọi health endpoint,HTTP 2xx và content-type JSON,High,API_BASE_URL đã cấu hình

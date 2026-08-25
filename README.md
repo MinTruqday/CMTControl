@@ -16,7 +16,22 @@ npm run test:integration
 npm run qa:all
 ```
 
-`qa:all` always starts with `test:unit` and `test:integration`; their status is written into the run report before runtime browser checks begin.
+For the exact test locations, Postman import steps, artifact behavior, and how
+to interpret a run, see [TESTING.md](TESTING.md).
+
+`qa:all` starts with unit tests, integration tests, and a production-dependency
+security audit. Their named status is written into the run report before
+runtime browser checks begin.
+
+Coverage never stops merely because a workbook has no requirement/test-case
+tab. In that case the runner uses deterministic site discovery and the existing
+executable suites, then asks the configured local AI for an advisory draft.
+When a compatible requirement/test-case tab is added, coverage automatically
+switches to Sheet-driven mapped/unmapped reporting.
+
+Project owners can fill [`PROJECT_INPUT.md`](PROJECT_INPUT.md) instead of guessing
+which URL, credentials, Sheet columns, role rules or local ports are required.
+Copy-ready Sheet layouts are provided under `templates/`.
 
 The runner never writes to source projects. Google Sheets synchronization is disabled by default and requires explicit credentials and configuration. Public-sheet discovery is read-only.
 
@@ -59,9 +74,17 @@ The writer identifies the compatible master tab by headers, appends only a new b
 ## Docker
 
 ```bash
-docker compose up -d mongodb
+docker compose up -d
 docker compose run --rm qa-runner npm run qa:all
 ```
+
+`docker compose up -d` starts MongoDB and the QA dashboard at
+`http://127.0.0.1:3000`. This project uses the Compose plugin command
+`docker compose` (with a space), not the legacy `docker-compose` binary.
+
+Rebuild `qa-runner` after dependency or Dockerfile changes. The Playwright npm
+package is pinned to the same version as the Playwright Docker image so the
+browser binaries and test runner cannot silently drift apart.
 
 MongoDB runs only on `127.0.0.1:27017` and keeps dashboard run records plus read-only Sheet snapshots. Set `MONGODB_URL=mongodb://127.0.0.1:27017/qa_control` for the local dashboard. The QA container reaches Ollama through `host.docker.internal` and mounts the local service-account directory read-only.
 

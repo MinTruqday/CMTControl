@@ -29,8 +29,8 @@ Audit date: 19/08/2026
 | MD requirement | Current status | Required proof of completion |
 |---|---|---|
 | 9.1–9.6 Postman/Newman runtime API tests | In progress | Collection, environment, Docker invocation and normalized JSON report; live run passes. |
-| 30–31 Requirement mapping and scenario model | Missing | Requirement-to-test matrix, scenario schema and executable validation. |
-| 33–34 AI code generation and validation pipeline | Missing | Opt-in generation, isolated validation and no-source-write guard. |
+| 30–31 Requirement mapping and scenario model | Partial | `coverage.json` maps recognized Requirement/Test Case tabs to executable test IDs; the current workbook has only a bug list, so the verified run uses `DISCOVERY_FALLBACK`. |
+| 33–34 AI code generation and validation pipeline | Partial | Local AI produces schema-validated advisory drafts when enabled; drafts remain review-only and deterministic tests continue if AI is unavailable. Executable code generation remains out of scope. |
 | 40–42 Performance, accessibility, browser matrix | Missing | Executable suites and artifacts for each supported browser/device. |
 | 58–65 full workbook compatibility and concurrency | Partial | Master-row link, conflict journal, compare-before-write and idempotent sync verification. |
 | 64 direct issue-sheet image embedding | Blocked externally | Deployed Apps Script URL plus a successful inserted image in an Issue_no.xx tab. |

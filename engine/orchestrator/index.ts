@@ -11,7 +11,7 @@ const reportDir = resolve(config.REPORT_OUTPUT_DIR, runId);
 
 function execute(label: string, command: string, args: string[]): number {
   log('group_started', { runId, label, command, args });
-  const result = spawnSync(command, args, { stdio: 'inherit', env: { ...process.env, QA_RUN_ID: runId } });
+  const result = spawnSync(command, args, { stdio: 'inherit', env: { ...process.env, QA_RUN_ID: runId, QA_GROUP: label } });
   const code = result.status ?? 1;
   log('group_finished', { runId, label, code });
   return code;
@@ -23,20 +23,31 @@ function main(): void {
   mkdirSync(reportDir, { recursive: true });
   const duplicateStatus = execute('duplicate-gate', 'npm', ['run', 'qa:duplicate-gate']);
   if (duplicateStatus !== 0) { process.exitCode = duplicateStatus; return; }
-  const groups = (mode === 'all' ? ['unit', 'integration', 'environment', 'api', 'ui', 'e2e', 'visual', 'discovery'] : [mode]).filter((group) => group !== 'visual' || config.VISUAL_TEST_ENABLED);
-  const statuses = groups.map((group) => {
-    if (group === 'unit') return execute(group, 'npm', ['run', 'test:unit']);
-    if (group === 'integration') return execute(group, 'npm', ['run', 'test:integration']);
-    if (group === 'environment') return execute(group, 'npm', ['run', 'qa:check-env']);
-    if (group === 'api') return execute(group, 'npm', ['run', 'qa:api:live']);
-    if (group === 'discovery') {
-      const status = execute(group, 'npm', ['run', 'qa:discover-site']);
-      execute('triage', 'npm', ['run', 'qa:triage']);
-      return status;
+  const groups = (mode === 'all' ? ['unit', 'integration', 'security', 'environment', 'api', 'ui', 'e2e', 'visual', 'discovery', 'coverage'] : [mode]).filter((group) => group !== 'visual' || config.VISUAL_TEST_ENABLED);
+  const groupResults = groups.map((group) => {
+    let status: number;
+    if (group === 'unit') status = execute(group, 'npm', ['run', 'test:unit']);
+    else if (group === 'integration') status = execute(group, 'npm', ['run', 'test:integration']);
+    else if (group === 'security') status = execute(group, 'npm', ['run', 'audit:prod']);
+    else if (group === 'environment') status = execute(group, 'npm', ['run', 'qa:check-env']);
+    else if (group === 'api') {
+      const publicStatus = execute('api-public', 'npm', ['run', 'qa:api:live']);
+      const backendStatus = config.API_BASE_URL ? execute('api-backend-health', 'npm', ['run', 'qa:api:direct']) : 0;
+      status = publicStatus !== 0 ? publicStatus : backendStatus;
     }
-    return execute(group, 'npx', ['playwright', 'test', group === 'ui' ? 'ui/tests' : group === 'e2e' ? 'e2e/tests' : 'visual/tests']);
+    else if (group === 'discovery') {
+      status = execute(group, 'npm', ['run', 'qa:discover-site']);
+      execute('triage', 'npm', ['run', 'qa:triage']);
+    }
+    else if (group === 'coverage') {
+      if (config.AI_ANALYSIS_ENABLED) execute('ai-test-plan-advisory', 'npm', ['run', 'qa:ai:test-plan']);
+      status = execute(group, 'npm', ['run', 'qa:coverage']);
+    }
+    else status = execute(group, 'npx', ['playwright', 'test', group === 'ui' ? 'ui/tests' : group === 'e2e' ? 'e2e/tests' : 'visual/tests']);
+    return { group, status };
   });
-  writeFileSync(resolve(reportDir, 'run.json'), JSON.stringify({ runId, mode, statuses, completedAt: new Date().toISOString() }, null, 2));
+  const statuses = groupResults.map((result) => result.status);
+  writeFileSync(resolve(reportDir, 'run.json'), JSON.stringify({ runId, mode, statuses, groupResults, completedAt: new Date().toISOString() }, null, 2));
   if (!existsSync(resolve('reports/current'))) mkdirSync(resolve('reports/current'), { recursive: true });
   execute('report', 'npm', ['run', 'qa:report']);
   process.exitCode = statuses.some((status) => status !== 0) ? 1 : 0;

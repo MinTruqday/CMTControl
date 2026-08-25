@@ -80,7 +80,10 @@ async function main(): Promise<void> {
     process.stdout.write(JSON.stringify({ output: 'reports/current/ai-test-plan.json', rewritten: true }));
     return;
   }
-  const discovery = await discoverSite();
+  const discoveryFile = resolve('reports/current/site-discovery.json');
+  const discovery = existsSync(discoveryFile)
+    ? JSON.parse(readFileSync(discoveryFile, 'utf8')) as SiteDiscovery
+    : await discoverSite();
   const pages = await Promise.all(pickRoutes(discovery).map(pageContext));
   const knownFindings = findings();
   const prompt = qaPrompt({

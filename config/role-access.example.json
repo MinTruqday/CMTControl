@@ -1,0 +1,19 @@
+{
+  "loginPath": "/login",
+  "selectors": {
+    "username": "input[name=email]",
+    "password": "input[name=password]",
+    "submit": "button[type=submit]"
+  },
+  "roles": [
+    {
+      "name": "admin",
+      "usernameEnv": "QA_ADMIN_USERNAME",
+      "passwordEnv": "QA_ADMIN_PASSWORD",
+      "expectations": [
+        { "path": "/admin", "allowed": true },
+        { "path": "/super-admin", "allowed": false }
+      ]
+    }
+  ]
+}

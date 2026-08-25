@@ -1,0 +1,15 @@
+.git
+.env
+node_modules
+dist
+reports
+evidence/*
+!evidence/annotate.ts
+test-results
+playwright-report
+storage
+bugs/*.json
+visual/actual
+visual/diff
+secret
+*.log

@@ -1,7 +1,21 @@
+import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { expect, test } from '../fixtures/runtime.js';
 
 function isLocalizedPath(url: URL): boolean {
   return /^\/(vi|en|ja)(\/|$)/.test(url.pathname);
+}
+
+async function getWithNetworkRetry(request: APIRequestContext, url: string, attempts = 3): Promise<APIResponse> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await request.get(url);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+    }
+  }
+  throw lastError;
 }
 
 for (const locale of ['vi', 'en', 'ja']) {
@@ -11,7 +25,7 @@ for (const locale of ['vi', 'en', 'ja']) {
     const routes = [...new Set(hrefs.map((href) => new URL(href, appUrl)).filter((url) => url.origin === new URL(appUrl).origin && isLocalizedPath(url)).map((url) => `${url.pathname}${url.search}`))];
     expect(routes.length, `${locale} homepage must expose localized internal navigation`).toBeGreaterThan(4);
     for (const route of routes) {
-      const response = await page.request.get(new URL(route, appUrl).toString());
+      const response = await getWithNetworkRetry(page.request, new URL(route, appUrl).toString());
       expect(response.status(), `internal route ${route} must not return an error`).toBeLessThan(400);
       expect(response.headers()['content-type'] ?? '', `internal route ${route} must return HTML`).toMatch(/text\/html/i);
     }

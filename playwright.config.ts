@@ -1,12 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
 import { config } from './config/qa.config.js';
 
+const artifactScope = [process.env.QA_RUN_ID, process.env.QA_GROUP]
+  .filter(Boolean)
+  .map((value) => value?.replace(/[^a-zA-Z0-9_-]/g, '-'))
+  .join('/');
+const artifactPath = (root: string): string => artifactScope ? `${root}/${artifactScope}` : root;
+
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.ts',
   timeout: 30_000,
   retries: 1,
-  reporter: [['html', { outputFolder: 'playwright-report', open: 'never' }], ['list']],
+  outputDir: artifactPath('test-results'),
+  reporter: [['html', { outputFolder: artifactPath('playwright-report'), open: 'never' }], ['list']],
   use: {
     baseURL: config.BASE_URL,
     headless: config.HEADLESS,
